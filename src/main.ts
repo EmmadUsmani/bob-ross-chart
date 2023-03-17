@@ -6,14 +6,45 @@ type Row = {
   numColors: number
 }
 
-const WIDTH = window.innerWidth * 0.9
-const HEIGHT = window.innerHeight * 0.9
-const TOP_MARGIN = 15
-const RIGHT_MARGIN = 15
-const BOTTOM_MARGIN = 40
-const LEFT_MARGIN = 60
-const BOUNDED_WIDTH = WIDTH - LEFT_MARGIN - RIGHT_MARGIN
-const BOUNDED_HEIGHT = HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
+type Dimensions = {
+  width: number
+  height: number
+  topMargin: number
+  rightMargin: number
+  bottomMargin: number
+  leftMargin: number
+  boundedWidth: number
+  boundedHeight: number
+}
+
+function getDimensions(widthRatio: number = 0.9, heightRatio: number = 0.9) {
+  const width = window.innerWidth * widthRatio
+  const height = window.innerHeight * heightRatio
+  const topMargin = 15
+  const rightMargin = 15
+  const bottomMargin = 40
+  const leftMargin = 60
+  const boundedWidth = width - leftMargin - rightMargin
+  const boundedHeight = height - topMargin - bottomMargin
+
+  return {
+    width,
+    height,
+    topMargin,
+    rightMargin,
+    bottomMargin,
+    leftMargin,
+    boundedWidth,
+    boundedHeight,
+  } as Dimensions
+}
+
+function getData() {
+  return d3.csv<Row>("./data.csv", (row) => ({
+    paintingNumber: parseInt(row[""] || "0"),
+    numColors: parseInt(row.num_colors || "0"),
+  }))
+}
 
 function yAccessor(row: Row) {
   return row.numColors
@@ -23,42 +54,43 @@ function xAccessor(row: Row) {
   return row.paintingNumber
 }
 
-function getYScale(data: DSVParsedArray<Row>) {
+function getYScale(data: DSVParsedArray<Row>, dimensions: Dimensions) {
   const yExtent = d3.extent(data, yAccessor).map((value) => value || 0)
-  return d3.scaleLinear().domain(yExtent).range([BOUNDED_HEIGHT, 0])
+  return d3.scaleLinear().domain(yExtent).range([dimensions.boundedHeight, 0])
 }
 
-function getXScale(data: DSVParsedArray<Row>) {
+function getXScale(data: DSVParsedArray<Row>, dimensions: Dimensions) {
   const xExtent = d3.extent(data, xAccessor).map((value) => value || 0)
-  return d3.scaleLinear().domain(xExtent).range([0, BOUNDED_WIDTH])
+  return d3.scaleLinear().domain(xExtent).range([0, dimensions.boundedWidth])
 }
 
 async function drawLineChart() {
-  const data = await d3.csv<Row>("./data.csv", (row) => ({
-    paintingNumber: parseInt(row[""] || "0"),
-    numColors: parseInt(row.num_colors || "0"),
-  }))
+  const dimensions = getDimensions(0.95, 0.95)
+  const data = await getData()
 
   // Draw canvas
   const wrapper = d3
     .select("#wrapper")
     .append("svg")
-    .attr("width", WIDTH)
-    .attr("height", HEIGHT)
+    .attr("width", dimensions.width)
+    .attr("height", dimensions.height)
   const bounds = wrapper
     .append("g")
-    .style("transform", `translate(${LEFT_MARGIN}px, ${TOP_MARGIN}px)`)
+    .style(
+      "transform",
+      `translate(${dimensions.leftMargin}px, ${dimensions.topMargin}px)`
+    )
 
   // Create scales
-  const yScale = getYScale(data)
-  const xScale = getXScale(data)
+  const yScale = getYScale(data, dimensions)
+  const xScale = getXScale(data, dimensions)
 
   // Draw data
   const lineGenerator = d3
     .line<Row>()
     .x((row) => xScale(xAccessor(row)))
     .y((row) => yScale(yAccessor(row)))
-  const line = bounds
+  bounds
     .append("path")
     .attr("d", lineGenerator(data))
     .attr("fill", "none")
@@ -67,13 +99,13 @@ async function drawLineChart() {
 
   // Draw peripherals
   const yAxisGenerator = d3.axisLeft(yScale)
-  const yAxis = bounds.append("g").call(yAxisGenerator)
+  bounds.append("g").call(yAxisGenerator)
 
   const xAxisGenerator = d3.axisBottom(xScale)
-  const xAxis = bounds
+  bounds
     .append("g")
     .call(xAxisGenerator)
-    .style("transform", `translateY(${BOUNDED_HEIGHT}px)`)
+    .style("transform", `translateY(${dimensions.boundedHeight}px)`)
 }
 
 drawLineChart()
