@@ -1,4 +1,5 @@
 import * as d3 from "d3"
+import { regressionLinear } from "d3-regression"
 import type { DSVParsedArray } from "d3"
 
 type Row = {
@@ -96,6 +97,21 @@ async function drawLineChart() {
     .attr("fill", "none")
     .attr("stroke", "LightSeaGreen")
     .attr("stroke-width", 1.5)
+
+  // Draw regression line
+  const regressionGenerator = regressionLinear()
+    .x((row: Row) => xScale(xAccessor(row)))
+    .y((row: Row) => yScale(yAccessor(row)))
+  const regression = regressionGenerator(data)
+  bounds
+    .append("path")
+    .attr(
+      "d",
+      `M ${regression[0][0]} ${regression[0][1]} L ${regression[1][0]} ${regression[1][1]}`
+    )
+    .attr("fill", "none")
+    .attr("stroke", "DarkSlateBlue")
+    .attr("stroke-width", 2)
 
   // Draw peripherals
   const yAxisGenerator = d3.axisLeft(yScale)
